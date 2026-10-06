@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database
+  namespace: incidenthub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database
+  template:
+    metadata:
+      labels:
+        app: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: incidenthub
+            - name: POSTGRES_USER
+              value: incidenthub
+            - name: POSTGRES_PASSWORD
+              value: incidenthub_password
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: schema
+              mountPath: /docker-entrypoint-initdb.d/schema.sql
+              subPath: schema.sql
+      volumes:
+        - name: postgres-storage
+          emptyDir: {}
+        - name: schema
+          configMap:
+            name: database-schema
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-schema
+  namespace: incidenthub
+data:
+  schema.sql: |
+    CREATE TABLE IF NOT EXISTS incidents (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        severity VARCHAR(20) NOT NULL DEFAULT 'medium',
+        status VARCHAR(30) NOT NULL DEFAULT 'open',
+        service VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: database
+  namespace: incidenthub
+spec:
+  selector:
+    app: database
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP

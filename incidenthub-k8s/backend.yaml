@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: incidenthub
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: backend
+
+  template:
+    metadata:
+      labels:
+        app: backend
+
+    spec:
+      imagePullSecrets:
+        - name: ecr-secret
+
+      containers:
+        - name: backend
+          image: 265020546803.dkr.ecr.us-east-1.amazonaws.com/incidenthub-backend:latest
+
+          ports:
+            - containerPort: 3000
+
+          env:
+            - name: PORT
+              value: "3000"
+
+            - name: DB_HOST
+              value: database
+
+            - name: DB_PORT
+              value: "5432"
+
+            - name: DB_NAME
+              value: incidenthub
+
+            - name: DB_USER
+              value: incidenthub
+
+            - name: DB_PASSWORD
+              value: incidenthub_password
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: incidenthub
+spec:
+  selector:
+    app: backend
+
+  ports:
+    - port: 3000
+      targetPort: 3000
+
+  type: ClusterIP
